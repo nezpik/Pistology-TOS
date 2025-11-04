@@ -1,5 +1,5 @@
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -38,6 +38,9 @@ model Task {
   updatedAt   DateTime @updatedAt
 
   @@index([containerId])
+  @@index([status])
+  @@index([assignee])
+  @@index([createdAt])
 }
 
 model TruckAppointment {
@@ -53,6 +56,10 @@ model TruckAppointment {
   updatedAt       DateTime @updatedAt
 
   @@index([containerId])
+  @@index([truckingCompany])
+  @@index([status])
+  @@index([appointmentTime])
+  @@index([licensePlate])
 }
 
 model EdiMessage {
@@ -68,6 +75,8 @@ model EdiMessage {
   codecoMessage CodecoMessage?
 
   @@index([containerId])
+  @@index([messageType])
+  @@index([createdAt])
 }
 
 model CustomsInspection {
@@ -80,6 +89,9 @@ model CustomsInspection {
   createdAt   DateTime @default(now())
 
   @@index([containerId])
+  @@index([status])
+  @@index([inspectedBy])
+  @@index([createdAt])
 }
 
 model DamageReport {
@@ -92,6 +104,8 @@ model DamageReport {
   createdAt   DateTime @default(now())
 
   @@index([containerId])
+  @@index([reportedBy])
+  @@index([createdAt])
 }
 
 model Location {
@@ -113,6 +127,8 @@ model History {
   createdAt   DateTime @default(now())
 
   @@index([containerId])
+  @@index([createdAt])
+  @@index([event])
 }
 
 enum TaskStatus {
@@ -156,6 +172,9 @@ model BaplieContainer {
   size            String
   type            String
   weight          Float?
+
+  @@index([baplieMessageId])
+  @@index([containerId])
 }
 
 model CoarriMessage {
@@ -175,6 +194,10 @@ model CoarriMovement {
   movementType     String // e.g., 'LOAD', 'DISCHARGE', 'SHIFT'
   stowageLocation  String?
   isoContainerType String?
+
+  @@index([coarriMessageId])
+  @@index([containerId])
+  @@index([movementType])
 }
 
 model CodecoMessage {
@@ -193,4 +216,9 @@ model CodecoMovement {
   movementType        String // 'IN' or 'OUT'
   truckLicensePlate   String?
   isoContainerType    String?
+
+  @@index([codecoMessageId])
+  @@index([containerId])
+  @@index([movementType])
+  @@index([truckLicensePlate])
 }
