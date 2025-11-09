@@ -9,18 +9,14 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - NODE_ENV=production
-      - PORT=3001
-      - DATABASE_URL=file:/app/data/prod.db
+      - RUST_LOG=info
+      - DATABASE_URL=sqlite:/app/data/prod.db
     volumes:
       # Persist SQLite database
       - backend-data:/app/data
-      # Mount prisma for migrations
-      - ./backend/prisma:/app/prisma
-    command: sh -c "npx prisma db push && node dist/index.js"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/', (r) => {if (r.statusCode === 200) process.exit(0); process.exit(1);})"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 30s
       timeout: 3s
       retries: 3

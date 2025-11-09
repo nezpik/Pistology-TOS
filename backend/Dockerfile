@@ -1,52 +1,56 @@
-# Backend Dockerfile
-FROM node:18-alpine AS base
+# Build stage
+FROM rust:1.83-alpine AS builder
 
-# Install dependencies only when needed
-FROM base AS deps
+# Install build dependencies
+RUN apk add --no-cache musl-dev sqlite-dev
+
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json* ./
-RUN npm ci
+# Copy manifests
+COPY Cargo.toml ./
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+# Create dummy main to build dependencies
+RUN mkdir src && \
+    echo "fn main() {}" > src/main.rs
 
-# Generate Prisma Client
-RUN npx prisma generate
+# Build dependencies (cached layer)
+RUN cargo build --release && \
+    rm -rf src
 
-# Build TypeScript
-RUN npm run build
+# Copy source code
+COPY src ./src
+COPY schema.sql ./
 
-# Production image
-FROM base AS runner
-WORKDIR /app
+# Build application
+RUN touch src/main.rs && \
+    cargo build --release
 
-ENV NODE_ENV=production
+# Runtime stage
+FROM alpine:3.19
+
+# Install runtime dependencies
+RUN apk add --no-cache libgcc sqlite-libs
 
 # Create app user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 expressjs
+RUN addgroup -g 1000 rustapp && \
+    adduser -D -u 1000 -G rustapp rustapp
 
-# Copy necessary files
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/package.json ./package.json
+WORKDIR /app
 
-# Create directory for SQLite database
-RUN mkdir -p /app/data && chown -R expressjs:nodejs /app/data
+# Copy binary from builder
+COPY --from=builder /app/target/release/pistology-backend /app/pistology-backend
+COPY --from=builder /app/schema.sql /app/schema.sql
 
-USER expressjs
+# Create data directory
+RUN mkdir -p /app/data && \
+    chown -R rustapp:rustapp /app
 
-# Expose port
+USER rustapp
+
 EXPOSE 3001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/', (r) => {if (r.statusCode === 200) process.exit(0); process.exit(1);})"
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
 
-CMD ["node", "dist/index.js"]
+CMD ["/app/pistology-backend"]

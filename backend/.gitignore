@@ -1,3 +1,19 @@
-node_modules
-dist
+# Rust
+target/
+Cargo.lock
+
+# Database
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Environment
 .env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
